@@ -4,80 +4,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const voiceBtn = document.getElementById('voice-btn');
     const aiResponseBox = document.getElementById('ai-response-box');
 
-    // Gemini API 설정
-    let GEMINI_API_KEY = localStorage.getItem('GEMINI_API_KEY') || '';
-
     async function getAIAnalysis(diaryText) {
-        if (!GEMINI_API_KEY) {
-            const key = prompt('Google Gemini API Key가 필요합니다.\nhttps://aistudio.google.com/app/apikey 에서 무료로 발급받아 입력해주세요.\n(입력하신 키는 브라우저에 안전하게 저장됩니다):');
-            if (key) {
-                const trimmedKey = key.trim();
-                localStorage.setItem('GEMINI_API_KEY', trimmedKey);
-                GEMINI_API_KEY = trimmedKey;
+        try {
+            // 프론트엔드에서 Vercel의 서버리스 백엔드로 분석 요청
+            const response = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ diaryContent: diaryText })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                return data.result;
             } else {
-                return 'API Key가 입력되지 않아 분석을 시작할 수 없습니다.';
+                return data.message || `서버 오류가 발생했습니다. (${response.status})`;
             }
-        }
-
-        // 시도할 모델 리스트 (최신순)
-        const models = ['gemini-3-flash', 'gemini-3-flash-preview', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-        let lastError = null;
-
-        for (const model of models) {
-            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [{
-                                text: `당신은 따뜻하고 공감 능력이 뛰어난 AI 감정 상담사입니다. 
-                                       다음은 사용자가 쓴 일기입니다: "${diaryText}"
-                                       
-                                       이 일기를 읽고 사용자의 감정을 분석한 뒤, 
-                                       1. 사용자의 감정에 공감해주고 
-                                       2. 따뜻한 조언이나 응원의 메시지를 보내주세요.
-                                       답변은 친근한 '해요체'를 사용하고, 너무 길지 않게(3~4문장) 작성해주세요.`
-                            }]
-                        }]
-                    })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-                        return data.candidates[0].content.parts[0].text;
-                    }
-                }
-
-                if (response.status === 404) {
-                    console.warn(`${model} 모델을 찾을 수 없어 다음 모델을 시도합니다.`);
-                    continue; // 다음 모델 시도
-                }
-
-                if (response.status === 400 || response.status === 401 || response.status === 403) {
-                    localStorage.removeItem('GEMINI_API_KEY');
-                    GEMINI_API_KEY = '';
-                    return 'API Key가 올바르지 않거나 권한이 없습니다. 다시 시도하여 유효한 키를 입력해주세요.';
-                } else if (response.status === 429) {
-                    return '너무 많은 요청을 보냈습니다. 잠시 후 다시 시도해주세요.';
-                } else {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(`API 오류 (상태 코드: ${response.status})`);
-                }
-            } catch (error) {
-                console.error(`${model} 호출 중 에러:`, error);
-                lastError = error;
+        } catch (error) {
+            console.error('API 호출 중 에러:', error);
+            if (!navigator.onLine) {
+                return '인터넷 연결이 끊겨 있습니다. 네트워크 상태를 확인해주세요.';
             }
+            return 'AI 서버와 연결하는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
         }
-
-        // 모든 모델 시도 실패 시
-        if (!navigator.onLine) {
-            return '인터넷 연결이 끊겨 있습니다. 네트워크 상태를 확인해주세요.';
-        }
-        return `AI와 연결하는 중 오류가 발생했습니다. API Key를 확인하거나 잠시 후 시도해주세요. (마지막 에러: ${lastError?.message})`;
     }
 
     // 분석 요청하기 버튼 클릭 이벤트
@@ -107,16 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
         analyzeBtn.innerHTML = originalBtnText;
     });
 
-    // API Key 재설정 버튼 이벤트
-    document.getElementById('reset-key-btn').addEventListener('click', () => {
-        if (confirm('저장된 API Key를 삭제하고 다시 입력하시겠습니까?')) {
-            localStorage.removeItem('GEMINI_API_KEY');
-            GEMINI_API_KEY = '';
-            alert('API Key가 초기화되었습니다. 다음 분석 요청 시 새로운 키를 입력해주세요.');
-        }
-    });
-
-    // 음성 인식 및 비주얼라이저 설정
+    // 기존의 API Key 재설정 버튼 관련 로직은 서버리스 이전으로 삭제되었습니다.    // 음성 인식 및 비주얼라이저 설정
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
     let isRecording = false;
