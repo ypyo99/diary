@@ -243,3 +243,76 @@ h2 {
     height: 20px;
     fill: currentColor;
 }
+
+/* History Section Styles */
+.history-section {
+    border-top: 1px solid var(--glass-border);
+    padding-top: 30px;
+    margin-top: 30px;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+/* Custom scrollbar for history list */
+.history-list::-webkit-scrollbar {
+    width: 6px;
+}
+.history-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+.history-list::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 10px;
+}
+
+.history-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.history-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+}
+
+.history-date {
+    font-size: 0.85rem;
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.history-content {
+    font-size: 1rem;
+    color: white;
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+.history-ai {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    background: var(--ai-bg);
+    padding: 15px;
+    border-radius: 12px;
+    border-left: 3px solid var(--primary-color);
+    line-height: 1.5;
+}
+
+.history-empty, .history-loading {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 20px;
+    font-style: italic;
+}

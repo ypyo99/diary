@@ -3,6 +3,61 @@ document.addEventListener('DOMContentLoaded', () => {
     const analyzeBtn = document.getElementById('analyze-btn');
     const voiceBtn = document.getElementById('voice-btn');
     const aiResponseBox = document.getElementById('ai-response-box');
+    const historyContainer = document.getElementById('history-container');
+
+    // 히스토리 불러오기
+    async function loadHistory() {
+        try {
+            historyContainer.innerHTML = '<div class="history-loading">히스토리를 불러오는 중...</div>';
+            const response = await fetch('/api/history');
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                renderHistory(data.history);
+            } else {
+                historyContainer.innerHTML = `<div class="history-empty">히스토리를 불러오지 못했습니다.</div>`;
+            }
+        } catch (error) {
+            console.error('History fetch error:', error);
+            historyContainer.innerHTML = '<div class="history-empty">서버와 연결할 수 없습니다.</div>';
+        }
+    }
+
+    // 히스토리 렌더링
+    function renderHistory(historyItems) {
+        if (!historyItems || historyItems.length === 0) {
+            historyContainer.innerHTML = '<div class="history-empty">아직 작성된 일기가 없습니다. 첫 일기를 작성해보세요!</div>';
+            return;
+        }
+
+        historyContainer.innerHTML = '';
+        historyItems.forEach(item => {
+            const dateObj = new Date(item.timestamp);
+            
+            // 날짜 포맷 (예: 2026. 5. 11. 오후 8:45)
+            const formattedDate = dateObj.toLocaleString('ko-KR', { 
+                year: 'numeric', month: 'long', day: 'numeric', 
+                hour: '2-digit', minute: '2-digit' 
+            });
+            
+            const historyDiv = document.createElement('div');
+            historyDiv.className = 'history-item';
+            
+            // 이스케이프 및 줄바꿈 처리
+            const safeContent = item.originalContent ? item.originalContent.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, '<br>') : '';
+            const safeResponse = item.aiResponse ? item.aiResponse.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, '<br>') : '';
+
+            historyDiv.innerHTML = `
+                <div class="history-date">${formattedDate}</div>
+                <div class="history-content">${safeContent}</div>
+                <div class="history-ai">✨ AI의 답변:<br>${safeResponse}</div>
+            `;
+            historyContainer.appendChild(historyDiv);
+        });
+    }
+
+    // 앱 시작 시 히스토리 로드
+    loadHistory();
 
     async function getAIAnalysis(diaryText) {
         try {
@@ -54,6 +109,13 @@ document.addEventListener('DOMContentLoaded', () => {
         aiResponseBox.textContent = analysisResult;
         analyzeBtn.disabled = false;
         analyzeBtn.innerHTML = originalBtnText;
+
+        // 방금 작성한 일기가 서버에 저장되었으므로 히스토리를 다시 불러옵니다
+        loadHistory();
+        
+        // 작성했던 입력창을 비워줍니다
+        diaryInput.value = '';
+        diaryInput.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
     });
 
     // 기존의 API Key 재설정 버튼 관련 로직은 서버리스 이전으로 삭제되었습니다.    // 음성 인식 및 비주얼라이저 설정
