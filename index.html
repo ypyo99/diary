@@ -1,22 +1,24 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 감정일기 - 당신의 마음을 읽어주는 공간</title>
     <meta name="description" content="AI 감정일기와 함께 당신의 하루를 기록하고 분석해보세요. 인공지능이 당신의 감정을 이해하고 따뜻한 답변을 전해드립니다.">
-    
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <main class="container">
         <header>
-            <h1 id="main-title">오늘의 하루는 어땠나요?</h1>
+            <h1 id="main-title">오늘 하루는 어땠나요?</h1>
         </header>
 
         <section class="input-section">
@@ -29,18 +31,19 @@
         <section class="button-group">
             <button id="voice-btn" class="btn btn-voice">
                 <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                    <line x1="12" y1="19" x2="12" y2="23"/>
-                    <line x1="8" y1="23" x2="16" y2="23"/>
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                    <line x1="12" y1="19" x2="12" y2="23" />
+                    <line x1="8" y1="23" x2="16" y2="23" />
                 </svg>
                 음성으로 입력하기
             </button>
             <button id="analyze-btn" class="btn btn-analyze">
                 <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                    <path
+                        d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                    <line x1="12" y1="22.08" x2="12" y2="12" />
                 </svg>
                 분석 요청하기
             </button>
@@ -52,15 +55,9 @@
                 여기에 AI의 답변이 표시됩니다.
             </div>
         </section>
-
-        <section class="history-section">
-            <h2>나의 일기 히스토리</h2>
-            <div id="history-container" class="history-list">
-                <div class="history-loading">로딩 중...</div>
-            </div>
-        </section>
     </main>
 
     <script src="app.js"></script>
 </body>
+
 </html>
