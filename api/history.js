@@ -1,6 +1,4 @@
-import Redis from 'ioredis';
-
-const redis = process.env.REDIS_URL ? new Redis(process.env.REDIS_URL) : null;
+import { supabase } from './_supabase.js';
 
 export default async function handler(req, res) {
   // CORS 설정
@@ -21,30 +19,29 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed', message: 'GET 요청만 지원합니다.' });
   }
 
-  if (!redis) {
-    return res.status(500).json({ error: 'Configuration Error', message: 'REDIS_URL이 설정되지 않았습니다.' });
+  if (!supabase) {
+    return res.status(500).json({ error: 'Configuration Error', message: 'Supabase가 설정되지 않았습니다.' });
   }
 
   try {
-    // 모든 일기 키 가져오기
-    const keys = await redis.keys('diary_*');
-    
-    if (keys.length === 0) {
-      return res.status(200).json({ success: true, history: [] });
-    }
+    const { data, error } = await supabase
+      .from('diaries')
+      .select('created_at, original_content, ai_response')
+      .order('created_at', { ascending: false })
+      .limit(50); // 최근 50개만 가져오기
 
-    // 값 가져오기
-    const values = await redis.mget(keys);
-    
-    // 파싱 및 정렬 (최신순)
-    const history = values
-      .filter(val => val !== null)
-      .map(val => JSON.parse(val))
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    if (error) throw error;
+
+    // 프론트엔드 형식(timestamp, originalContent, aiResponse)에 맞게 변환
+    const history = data.map(item => ({
+      timestamp: item.created_at,
+      originalContent: item.original_content,
+      aiResponse: item.ai_response
+    }));
 
     return res.status(200).json({ success: true, history });
   } catch (error) {
-    console.error('Redis fetch error:', error);
+    console.error('Supabase fetch error:', error);
     return res.status(500).json({ error: 'Internal Server Error', message: '히스토리를 가져오는 중 오류가 발생했습니다.' });
   }
 }

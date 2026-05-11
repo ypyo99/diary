@@ -1,7 +1,4 @@
-import Redis from 'ioredis';
-
-// Vercel 환경 변수 REDIS_URL을 통해 Redis 클라이언트 생성 (연결 풀링을 위해 함수 외부에 선언)
-const redis = process.env.REDIS_URL ? new Redis(process.env.REDIS_URL) : null;
+import { supabase } from './_supabase.js';
 
 export default async function handler(req, res) {
   // CORS 설정 (프론트엔드에서 API를 호출할 수 있도록 허용)
@@ -68,29 +65,23 @@ export default async function handler(req, res) {
                 if (data.candidates && data.candidates[0] && data.candidates[0].content) {
                     const resultText = data.candidates[0].content.parts[0].text;
                     
-                    // --- Redis에 데이터 저장 로직 추가 ---
-                    if (redis) {
+                    // --- Supabase에 데이터 저장 로직 추가 ---
+                    if (supabase) {
                         try {
-                            const now = new Date();
-                            // 현재 시간을 기준으로 한 고유 ID 생성 (예: diary_1715421532000)
-                            const uniqueId = `diary_${now.getTime()}`;
-                            
-                            // 저장할 데이터 묶음
-                            const record = {
-                                timestamp: now.toISOString(),
-                                originalContent: diaryContent,
-                                aiResponse: resultText
-                            };
-                            
-                            // JSON 문자열로 변환하여 Redis에 저장
-                            await redis.set(uniqueId, JSON.stringify(record));
-                            console.log(`[Redis 저장 완료] ID: ${uniqueId}`);
-                        } catch (redisError) {
-                            console.error('Redis 저장 중 오류 발생:', redisError);
-                            // Redis 저장에 실패해도 일기 응답은 정상적으로 내려보내기 위해 예외만 처리
+                            const { error } = await supabase
+                                .from('diaries')
+                                .insert([
+                                    { original_content: diaryContent, ai_response: resultText }
+                                ]);
+
+                            if (error) throw error;
+                            console.log(`[Supabase 저장 완료]`);
+                        } catch (dbError) {
+                            console.error('Supabase 저장 중 오류 발생:', dbError);
+                            // 저장에 실패해도 일기 응답은 정상적으로 내려보내기 위해 예외만 처리
                         }
                     } else {
-                        console.warn("REDIS_URL 환경변수가 없어 Redis에 저장하지 못했습니다.");
+                        console.warn("Supabase 환경변수가 없어 데이터베이스에 저장하지 못했습니다.");
                     }
                     // ------------------------------------
 
