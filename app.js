@@ -253,17 +253,33 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Supabase에서 직접 내 이메일(user_email)에 매칭되는 데이터만 최신순 정렬 조회 (최대 50개)
-            const { data, error } = await supabase
+            let resultData = null;
+            let { data: filteredData, error: queryError } = await supabase
                 .from('diaries')
                 .select('created_at, original_content, ai_response')
                 .eq('user_email', userEmail)
                 .order('created_at', { ascending: false })
                 .limit(50);
             
-            if (error) throw error;
+            // 만약 user_email 컬럼이 DB에 존재하지 않아 에러가 난 경우 (폴백 처리)
+            if (queryError && (queryError.code === '42703' || queryError.message.includes('user_email') || queryError.message.includes('column'))) {
+                console.warn("⚠️ user_email 컬럼이 데이터베이스에 없어 전체 조회를 진행합니다. Supabase 대시보드에 컬럼을 등록해 주세요!");
+                const { data: allData, error: fallbackError } = await supabase
+                    .from('diaries')
+                    .select('created_at, original_content, ai_response')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+                
+                if (fallbackError) throw fallbackError;
+                resultData = allData;
+            } else if (queryError) {
+                throw queryError;
+            } else {
+                resultData = filteredData;
+            }
 
             // 프론트엔드 렌더링에 적합한 데이터 구조로 맵핑
-            const history = data.map(item => ({
+            const history = resultData.map(item => ({
                 timestamp: item.created_at,
                 originalContent: item.original_content,
                 aiResponse: item.ai_response
