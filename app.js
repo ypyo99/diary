@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const signupBtn = document.getElementById('signup-btn');
     const googleLoginBtn = document.getElementById('google-login-btn');
     const logoutBtn = document.getElementById('logout-btn');
+    const deleteAccountBtn = document.getElementById('delete-account-btn');
 
     // 기존 일기장 DOM 요소
     const diaryInput = document.getElementById('diary-input');
@@ -153,6 +154,38 @@ document.addEventListener('DOMContentLoaded', () => {
                     passwordInput.value = '';
                 } catch (error) {
                     alert(`로그아웃 실패: ${error.message}`);
+                }
+            }
+        });
+    }
+
+    // 회원탈퇴 이벤트
+    if (deleteAccountBtn) {
+        deleteAccountBtn.addEventListener('click', async () => {
+            const confirmDelete = confirm('⚠️ 정말로 회원탈퇴를 하시겠습니까?\n탈퇴 시 작성하셨던 모든 소중한 일기 데이터가 영구 삭제되며, 복구할 수 없습니다.');
+            if (confirmDelete) {
+                const doubleConfirm = prompt('탈퇴를 정말로 확정하려면 "탈퇴"라고 입력해 주세요:');
+                if (doubleConfirm === '탈퇴') {
+                    try {
+                        deleteAccountBtn.disabled = true;
+                        deleteAccountBtn.textContent = '탈퇴 처리 중...';
+                        
+                        // Supabase RPC 함수를 호출하여 본인 계정 영구 삭제 실행
+                        const { error } = await supabase.rpc('delete_user');
+                        if (error) throw error;
+                        
+                        // 세션 청소 및 로그인 화면 전환
+                        await supabase.auth.signOut();
+                        alert('회원탈퇴가 성공적으로 완료되었습니다. 그동안 서비스를 이용해 주셔서 감사합니다.');
+                        showAuthApp();
+                    } catch (error) {
+                        alert(`회원탈퇴 처리 실패: ${error.message}\n(만약 계속 오류가 나면 Supabase SQL Editor에 delete_user RPC 함수가 등록되어 있는지 꼭 확인해 주세요!)`);
+                    } finally {
+                        deleteAccountBtn.disabled = false;
+                        deleteAccountBtn.textContent = '회원탈퇴';
+                    }
+                } else {
+                    alert('문구가 일치하지 않아 회원탈퇴가 취소되었습니다.');
                 }
             }
         });

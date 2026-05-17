@@ -553,15 +553,29 @@ h2 {
 /* Header Top Style for Logged In User */
 .header-top {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     margin-bottom: -10px;
     width: 100%;
+}
+
+.header-top #delete-account-btn {
+    margin: 0 auto 0 0;
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+.header-top #delete-account-btn:hover {
+    color: #ff80ab;
 }
 
 .header-top #logout-btn {
     margin: 0 0 0 auto;
     font-weight: 600;
     color: var(--accent-color);
+}
+
+.header-top #logout-btn:hover {
+    color: #ff80ab;
 }
 
 .header-top #logout-btn:hover {
