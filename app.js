@@ -1,4 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Auth DOM 요소
+    const authApp = document.getElementById('auth-app');
+    const diaryApp = document.getElementById('diary-app');
+    const emailInput = document.getElementById('auth-email');
+    const passwordInput = document.getElementById('auth-password');
+    const loginBtn = document.getElementById('login-btn');
+    const signupBtn = document.getElementById('signup-btn');
+    const googleLoginBtn = document.getElementById('google-login-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    // 기존 일기장 DOM 요소
     const diaryInput = document.getElementById('diary-input');
     const analyzeBtn = document.getElementById('analyze-btn');
     const voiceBtn = document.getElementById('voice-btn');
@@ -17,6 +28,153 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!supabase) {
         console.warn("⚠️ Supabase 라이브러리를 로드하지 못했습니다.");
     }
+
+    // ==========================================
+    // 🔐 SUPABASE AUTH (인증 로그인 비즈니스 로직)
+    // ==========================================
+
+    // 로그인된 사용자 세션 여부 체크
+    async function checkUserSession() {
+        if (!supabase) return;
+        try {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (error) throw error;
+            
+            if (session) {
+                showDiaryApp();
+            } else {
+                showAuthApp();
+            }
+        } catch (error) {
+            console.error("세션 확인 중 에러:", error);
+            showAuthApp();
+        }
+    }
+
+    function showDiaryApp() {
+        authApp.style.display = 'none';
+        diaryApp.style.display = 'block';
+        loadHistory(); // 일기 기록 최신순 불러오기
+    }
+
+    function showAuthApp() {
+        authApp.style.display = 'flex';
+        diaryApp.style.display = 'none';
+    }
+
+    // 이메일 로그인 이벤트
+    loginBtn.addEventListener('click', async () => {
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+
+        if (!email || !password) {
+            alert('이메일과 비밀번호를 모두 입력해 주세요!');
+            return;
+        }
+
+        loginBtn.disabled = true;
+        loginBtn.textContent = '로그인 중...';
+
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (error) throw error;
+            
+            // 로그인 성공 시 세션 다시 감지
+            checkUserSession();
+        } catch (error) {
+            alert(`로그인 실패: ${error.message}`);
+        } finally {
+            loginBtn.disabled = false;
+            loginBtn.textContent = '로그인';
+        }
+    });
+
+    // 이메일 회원가입 이벤트
+    signupBtn.addEventListener('click', async () => {
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+
+        if (!email || !password) {
+            alert('이메일과 비밀번호를 모두 입력해 주세요!');
+            return;
+        }
+
+        signupBtn.disabled = true;
+        signupBtn.textContent = '가입 진행 중...';
+
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password
+            });
+
+            if (error) throw error;
+            
+            alert('회원가입 요청이 성공적으로 처리되었습니다!\n이메일 인증이 필요한 경우 메일함을 확인해 주세요.');
+        } catch (error) {
+            alert(`회원가입 실패: ${error.message}`);
+        } finally {
+            signupBtn.disabled = false;
+            signupBtn.textContent = '회원가입';
+        }
+    });
+
+    // Google 소셜 로그인 이벤트
+    googleLoginBtn.addEventListener('click', async () => {
+        if (!supabase) return;
+        try {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin
+                }
+            });
+            if (error) throw error;
+        } catch (error) {
+            alert(`Google 로그인 실패: ${error.message}`);
+        }
+    });
+
+    // 로그아웃 이벤트
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            const confirmLogout = confirm('정말 로그아웃 하시겠습니까?');
+            if (confirmLogout) {
+                try {
+                    const { error } = await supabase.auth.signOut();
+                    if (error) throw error;
+                    
+                    showAuthApp();
+                    emailInput.value = '';
+                    passwordInput.value = '';
+                } catch (error) {
+                    alert(`로그아웃 실패: ${error.message}`);
+                }
+            }
+        });
+    }
+
+    // Supabase 인증 상태 실시간 리스너 등록 (OAuth 등 복귀 시 자동 반응)
+    if (supabase) {
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (session) {
+                showDiaryApp();
+            } else {
+                showAuthApp();
+            }
+        });
+    }
+
+    // 앱 구동 시 로그인 세션 검사 시작
+    checkUserSession();
+
+    // ==========================================
+    // ⚙️ GEMINI API KEY & HISTORY MANAGEMENT
+    // ==========================================
 
     // Gemini API Key 로드 및 프롬프트 관리
     function getGeminiApiKey() {
@@ -108,9 +266,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 앱 시작 시 히스토리 로드
-    loadHistory();
-
     // 브라우저에서 직접 Gemini API 호출 및 Supabase 저장
     async function getAIAnalysis(diaryText) {
         try {
@@ -120,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 구동 가능한 Gemini 모델 우선 순위 목록
-            const models = ['gemini-3-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+            const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
             let lastError = null;
             let resultText = '';
 
@@ -227,13 +382,25 @@ document.addEventListener('DOMContentLoaded', () => {
         diaryInput.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
     });
 
-    // 음성 인식 및 비주얼라이저 설정
+    // ==========================================
+    // 🎙️ VOICE RECOGNITION & AUDIO VISUALIZER
+    // ==========================================
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
     let isRecording = false;
     
     // 비주얼라이저 요소 생성
     const visualizer = document.getElementById('visualizer');
+    
+    // index.html의 visualizer 안에 파형 바가 아직 생성되지 않은 상태라면 동적 생성합니다.
+    if (visualizer && visualizer.children.length === 0) {
+        for (let i = 0; i < 30; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'bar';
+            visualizer.appendChild(bar);
+        }
+    }
+    
     const bars = document.querySelectorAll('.bar');
 
     // 오디오 컨텍스트 (비주얼라이저용)
@@ -293,7 +460,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         recognition.onresult = (event) => {
             console.log('>>> [엔진] 결과 수신 중...');
-            let currentTranscript = '';
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 if (event.results[i].isFinal) {
                     const transcript = event.results[i][0].transcript;
@@ -331,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (animationId) cancelAnimationFrame(animationId);
         if (audioContext) audioContext.close();
         
-        visualizer.classList.remove('active');
+        if (visualizer) visualizer.classList.remove('active');
         voiceBtn.classList.remove('recording');
         voiceBtn.innerHTML = `
             <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

@@ -305,6 +305,68 @@ h2 {
     color: var(--text-muted);
     background: var(--ai-bg);
     padding: 15px;
+
+/* History Section Styles */
+.history-section {
+    border-top: 1px solid var(--glass-border);
+    padding-top: 30px;
+    margin-top: 30px;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+/* Custom scrollbar for history list */
+.history-list::-webkit-scrollbar {
+    width: 6px;
+}
+.history-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+.history-list::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 10px;
+}
+
+.history-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.history-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+}
+
+.history-date {
+    font-size: 0.85rem;
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.history-content {
+    font-size: 1rem;
+    color: white;
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+.history-ai {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    background: var(--ai-bg);
+    padding: 15px;
     border-radius: 12px;
     border-left: 3px solid var(--primary-color);
     line-height: 1.5;
@@ -315,4 +377,160 @@ h2 {
     color: var(--text-muted);
     padding: 20px;
     font-style: italic;
+}
+
+/* ==========================================
+   ✨ AUTHENTICATION SECTION (로그인/회원가입)
+   ========================================== */
+.auth-container {
+    width: 90%;
+    max-width: 440px;
+    padding: 40px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    animation: fadeIn 0.8s ease-out;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    margin: 20px auto;
+}
+
+.auth-header {
+    text-align: center;
+}
+
+.auth-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(to right, #fff, #b39ddb, #ff4081);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.auth-subtitle {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.auth-form input {
+    width: 100%;
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    color: white;
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.auth-form input:focus {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(124, 77, 255, 0.35);
+}
+
+.auth-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 5px;
+}
+
+.btn-login {
+    background: var(--primary-color);
+    color: white;
+    flex: 1.6;
+    box-shadow: 0 4px 15px rgba(124, 77, 255, 0.4);
+}
+
+.btn-login:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(124, 77, 255, 0.5);
+}
+
+.btn-signup {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid var(--glass-border);
+    flex: 1;
+}
+
+.btn-signup:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin: 10px 0;
+}
+
+.divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.divider::before {
+    margin-right: 15px;
+}
+
+.divider::after {
+    margin-left: 15px;
+}
+
+.btn-google {
+    background: white;
+    color: #2c2c2c;
+    width: 100%;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.btn-google:hover {
+    background: #f7f7f7;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.google-icon {
+    width: 18px;
+    height: 18px;
+}
+
+/* Header Top Style for Logged In User */
+.header-top {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: -10px;
+    width: 100%;
+}
+
+.header-top #logout-btn {
+    margin: 0 0 0 auto;
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+.header-top #logout-btn:hover {
+    color: #ff80ab;
 }
