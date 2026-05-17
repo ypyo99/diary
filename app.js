@@ -243,10 +243,20 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             historyContainer.innerHTML = '<div class="history-loading">히스토리를 불러오는 중...</div>';
             
-            // Supabase에서 직접 diaries 테이블 데이터 최신순 정렬 조회 (최대 50개)
+            // 1. 로그인된 사용자 정보 획득
+            const { data: { session } } = await supabase.auth.getSession();
+            const userEmail = session?.user?.email;
+
+            if (!userEmail) {
+                historyContainer.innerHTML = '<div class="history-empty">로그인 정보가 유실되었습니다. 다시 로그인해 주세요.</div>';
+                return;
+            }
+
+            // Supabase에서 직접 내 이메일(user_email)에 매칭되는 데이터만 최신순 정렬 조회 (최대 50개)
             const { data, error } = await supabase
                 .from('diaries')
                 .select('created_at, original_content, ai_response')
+                .eq('user_email', userEmail)
                 .order('created_at', { ascending: false })
                 .limit(50);
             
@@ -360,10 +370,18 @@ document.addEventListener('DOMContentLoaded', () => {
             // 분석 결과를 Supabase 데이터베이스에 직접 저장
             if (supabase) {
                 try {
+                    // 로그인 세션에서 현재 이메일 획득
+                    const { data: { session } } = await supabase.auth.getSession();
+                    const userEmail = session?.user?.email || 'anonymous';
+
                     const { error } = await supabase
                         .from('diaries')
                         .insert([
-                            { original_content: diaryText, ai_response: resultText }
+                            { 
+                                original_content: diaryText, 
+                                ai_response: resultText,
+                                user_email: userEmail // 이메일 필드 함께 기록!
+                            }
                         ]);
 
                     if (error) throw error;
