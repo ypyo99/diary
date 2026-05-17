@@ -4,22 +4,74 @@ document.addEventListener('DOMContentLoaded', () => {
     const voiceBtn = document.getElementById('voice-btn');
     const aiResponseBox = document.getElementById('ai-response-box');
     const historyContainer = document.getElementById('history-container');
+    const resetApiKeyBtn = document.getElementById('reset-api-key-btn');
 
-    // 히스토리 불러오기
+    // Supabase 설정 및 초기화 (CDN 라이브러리 사용)
+    const supabaseUrl = "https://drqzkttiqljpqceiqdic.supabase.co";
+    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRycXprdHRpcWxqcHFjZWlxZGljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0ODE2OTUsImV4cCI6MjA5NDA1NzY5NX0.8bD6o4wYRcMyLzq6-HopHjjPTgRT1xjQxTLniL6sWBw";
+    
+    const supabase = (window.supabase) 
+        ? window.supabase.createClient(supabaseUrl, supabaseKey) 
+        : null;
+
+    if (!supabase) {
+        console.warn("⚠️ Supabase 라이브러리를 로드하지 못했습니다.");
+    }
+
+    // Gemini API Key 로드 및 프롬프트 관리
+    function getGeminiApiKey() {
+        let apiKey = localStorage.getItem('GEMINI_API_KEY');
+        if (!apiKey) {
+            apiKey = prompt('Gemini API Key를 입력해주세요.\n입력하신 키는 사용자의 브라우저 로컬 저장소(localStorage)에만 안전하게 보관됩니다:');
+            if (apiKey) {
+                apiKey = apiKey.trim();
+                localStorage.setItem('GEMINI_API_KEY', apiKey);
+            }
+        }
+        return apiKey;
+    }
+
+    // API Key 리셋 이벤트
+    if (resetApiKeyBtn) {
+        resetApiKeyBtn.addEventListener('click', () => {
+            const confirmReset = confirm('저장된 Gemini API Key를 삭제하시겠습니까?');
+            if (confirmReset) {
+                localStorage.removeItem('GEMINI_API_KEY');
+                alert('API Key가 성공적으로 삭제되었습니다. 다음 분석 요청 시 새로운 키를 입력받습니다.');
+            }
+        });
+    }
+
+    // Supabase 데이터베이스로부터 히스토리 직접 불러오기
     async function loadHistory() {
+        if (!supabase) {
+            historyContainer.innerHTML = '<div class="history-empty">Supabase 연결을 구성할 수 없습니다.</div>';
+            return;
+        }
+
         try {
             historyContainer.innerHTML = '<div class="history-loading">히스토리를 불러오는 중...</div>';
-            const response = await fetch('/api/history');
-            const data = await response.json();
             
-            if (response.ok && data.success) {
-                renderHistory(data.history);
-            } else {
-                historyContainer.innerHTML = `<div class="history-empty">히스토리를 불러오지 못했습니다.</div>`;
-            }
+            // Supabase에서 직접 diaries 테이블 데이터 최신순 정렬 조회 (최대 50개)
+            const { data, error } = await supabase
+                .from('diaries')
+                .select('created_at, original_content, ai_response')
+                .order('created_at', { ascending: false })
+                .limit(50);
+            
+            if (error) throw error;
+
+            // 프론트엔드 렌더링에 적합한 데이터 구조로 맵핑
+            const history = data.map(item => ({
+                timestamp: item.created_at,
+                originalContent: item.original_content,
+                aiResponse: item.ai_response
+            }));
+
+            renderHistory(history);
         } catch (error) {
             console.error('History fetch error:', error);
-            historyContainer.innerHTML = '<div class="history-empty">서버와 연결할 수 없습니다.</div>';
+            historyContainer.innerHTML = '<div class="history-empty">데이터베이스로부터 기록을 불러올 수 없습니다.</div>';
         }
     }
 
@@ -59,28 +111,85 @@ document.addEventListener('DOMContentLoaded', () => {
     // 앱 시작 시 히스토리 로드
     loadHistory();
 
+    // 브라우저에서 직접 Gemini API 호출 및 Supabase 저장
     async function getAIAnalysis(diaryText) {
         try {
-            // 프론트엔드에서 Vercel의 서버리스 백엔드로 분석 요청
-            const response = await fetch('/api/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ diaryContent: diaryText })
-            });
-
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                return data.result;
-            } else {
-                return data.message || `서버 오류가 발생했습니다. (${response.status})`;
+            const apiKey = getGeminiApiKey();
+            if (!apiKey) {
+                return 'Gemini API Key가 입력되지 않았습니다. API Key를 입력하셔야 감정 분석 서비스를 이용하실 수 있습니다.';
             }
+
+            // 구동 가능한 Gemini 모델 우선 순위 목록
+            const models = ['gemini-3-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+            let lastError = null;
+            let resultText = '';
+
+            for (const model of models) {
+                const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+                
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [{
+                                    text: `당신은 따뜻하고 공감 능력이 뛰어난 AI 감정 상담사입니다. \n다음은 사용자가 쓴 일기입니다: "${diaryText}"\n\n이 일기를 읽고 사용자의 감정을 분석한 뒤, \n1. 사용자의 감정에 공감해주고 \n2. 따뜻한 조언이나 응원의 메시지를 보내주세요.\n답변은 친근한 '해요체'를 사용하고, 너무 길지 않게(3~4문장) 작성해주세요.`
+                                }]
+                            }]
+                        })
+                     });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                            resultText = data.candidates[0].content.parts[0].text;
+                            break; // 성공 시 루프 탈출
+                        }
+                    }
+
+                    if (response.status === 404) {
+                        continue; // 모델 미지원 시 다음 모델 탐색
+                    }
+
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || `API 오류 (상태 코드: ${response.status})`);
+                } catch (error) {
+                    console.error(`${model} 호출 중 에러:`, error);
+                    lastError = error;
+                }
+            }
+
+            // 모든 모델 호출 실패 시
+            if (!resultText) {
+                if (lastError?.message?.includes('API key') || lastError?.message?.toLowerCase().includes('key not valid')) {
+                    localStorage.removeItem('GEMINI_API_KEY'); // 키가 무효하면 로컬스토리지 비움
+                    return '입력하신 Gemini API Key가 유효하지 않습니다. 다시 시도하셔서 올바른 API Key를 입력해주세요.';
+                }
+                return `AI 분석 중 오류가 발생했습니다. (에러: ${lastError?.message})`;
+            }
+
+            // 분석 결과를 Supabase 데이터베이스에 직접 저장
+            if (supabase) {
+                try {
+                    const { error } = await supabase
+                        .from('diaries')
+                        .insert([
+                            { original_content: diaryText, ai_response: resultText }
+                        ]);
+
+                    if (error) throw error;
+                    console.log(`[Supabase 데이터 직접 저장 완료]`);
+                } catch (dbError) {
+                    console.error('Supabase 저장 오류:', dbError);
+                }
+            }
+
+            return resultText;
+
         } catch (error) {
-            console.error('API 호출 중 에러:', error);
-            if (!navigator.onLine) {
-                return '인터넷 연결이 끊겨 있습니다. 네트워크 상태를 확인해주세요.';
-            }
-            return 'AI 서버와 연결하는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+            console.error('Error analyzing diary:', error);
+            return 'AI 분석 중 알 수 없는 예외 오류가 발생했습니다. 네트워크 상태를 확인해주세요.';
         }
     }
 
@@ -101,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const originalBtnText = analyzeBtn.innerHTML;
         analyzeBtn.innerHTML = '분석 중...';
 
-        // 실제 AI 분석 요청
+        // 실제 AI 분석 요청 및 Supabase 직접 인서트 실행
         const analysisResult = await getAIAnalysis(text);
         
         // 결과 표시
@@ -110,26 +219,21 @@ document.addEventListener('DOMContentLoaded', () => {
         analyzeBtn.disabled = false;
         analyzeBtn.innerHTML = originalBtnText;
 
-        // 방금 작성한 일기가 서버에 저장되었으므로 히스토리를 다시 불러옵니다
+        // 히스토리를 다시 불러와 실시간 업데이트
         loadHistory();
         
-        // 작성했던 입력창을 비워줍니다
+        // 입력창 비우기 및 배경 복원
         diaryInput.value = '';
         diaryInput.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
     });
 
-    // 기존의 API Key 재설정 버튼 관련 로직은 서버리스 이전으로 삭제되었습니다.    // 음성 인식 및 비주얼라이저 설정
+    // 음성 인식 및 비주얼라이저 설정
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
     let isRecording = false;
     
     // 비주얼라이저 요소 생성
     const visualizer = document.getElementById('visualizer');
-    for (let i = 0; i < 30; i++) {
-        const bar = document.createElement('div');
-        bar.className = 'bar';
-        visualizer.appendChild(bar);
-    }
     const bars = document.querySelectorAll('.bar');
 
     // 오디오 컨텍스트 (비주얼라이저용)
@@ -172,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
         recognition = new SpeechRecognition();
         recognition.lang = 'ko-KR';
         recognition.continuous = false; 
-        recognition.interimResults = true; // 실시간 응답을 위해 다시 true
+        recognition.interimResults = true;
 
         recognition.onstart = () => {
             console.log('>>> [엔진] 인식 시작');
@@ -201,17 +305,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         recognition.onerror = (event) => {
             console.error('>>> [엔진] 에러:', event.error);
-            if (event.error === 'network') {
-                console.warn('네트워크 상태를 확인해주세요.');
-            }
-            // 에러 시에도 안전하게 버튼 상태 초기화
             if (event.error !== 'no-speech') stopVoiceRecognition();
         };
 
         recognition.onend = () => {
             console.log('>>> [엔진] 세션 종료');
             if (isRecording) {
-                // 끊기지 않게 바로 다시 시작 (엔진 깨우기)
                 setTimeout(() => {
                     if (isRecording) recognition.start();
                 }, 50);
@@ -253,7 +352,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 입력창 애니메이션 효과 (선택사항)
     diaryInput.addEventListener('input', () => {
         if (diaryInput.value.length > 0) {
             diaryInput.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
