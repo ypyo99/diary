@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (error) throw error;
             
-            alert('회원가입 요청이 성공적으로 처리되었습니다!\n이메일 인증이 필요한 경우 메일함을 확인해 주세요.');
+            alert('가입 확인 이메일을 확인해 주세요!');
         } catch (error) {
             alert(`회원가입 실패: ${error.message}`);
         } finally {
